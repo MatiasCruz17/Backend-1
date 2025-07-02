@@ -1,3 +1,9 @@
+import http from "http";
+
+const server = http.createServer( (request, response ) => {
+    
+});
+
 class ProductManager {
     constructor (){
         this.products = [];
@@ -47,9 +53,11 @@ class ProductManager {
 const manager = new ProductManager();
 
 manager.addProduct("Celular", "Smartphone", 120000, "img1.jpg", "abc123", 5);
-manager.addProduct("Celular", "Smartphone", 120000, "img1.jpg", "abc123", 5);
+manager.addProduct("Celular", "Smartphone", 150000, "img2.jpg", "1234", 5);
 
 console.log(manager.getProducts());
 
 console.log(manager.getProductsById(1));
 console.log(manager.getProductsById(5));
+
+ProductManager.listen(8080);
