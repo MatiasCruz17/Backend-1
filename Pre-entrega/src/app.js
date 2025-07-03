@@ -15,12 +15,20 @@ const __dirname = path.dirname (__filename);
 
 const app = express();
 const PORT = 8080;
-
 const httpServer = http.createServer(app);
 const io = new Server(httpServer);
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'src/public')))
+console.log("🧭 __dirname:", __dirname);
+console.log("📂 Static path:", path.join(__dirname, 'public'));
+app.use(express.static(path.join(__dirname, 'public')))
+app.use((req, res, next) => {
+    if (req.url.includes('/js/realTime.js')) {
+        console.error(`⚠️ Archivo JS no encontrado en: ${req.url}`);
+    }
+    next();
+});
+app.use('/', viewsRouter);
 
 app.engine('handlebars', engine())
 app.set('view engine', 'handlebars')
@@ -28,7 +36,7 @@ app.set('views', path.join(__dirname, 'views'))
 
 app.use('/api/products', productsRouter);
 app.use('/api/carts', cartsRouter);
-app.use('/', viewsRouter);
+
 
 const productManager = new ProductManager();
 
