@@ -1,99 +1,45 @@
-import fs from "fs/promises";
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const filePath = path.join(__dirname, '../../products.json');
+import ProductModel from "../models/product.model.js";
 
 class ProductManager {
-    constructor() {
-        this.path = filePath;
-    }
+    async getProducts({ limit = 10, page = 1, sort, query } = {}) {
+        const filter = {};
 
-    async getProducts() {
-        try {
-            const data = await fs.readFile(this.path, 'utf-8');
-            return JSON.parse(data);
-        } catch (error) {
-            return [];
+        if (query) {
+            if (query === 'available') filter.status = true;
+            else filter.category = query;
         }
-    }
-
-    async addProduct(productData) {
-        const { title, description, price, code, stock, category, thumbnails } = productData;
-
-        if (!title || !description || !price || !code || !stock || !category || !thumbnails) {
-            console.log('Todos los campos son obligatorios.');
-            return;
-        }
-
-        const products = await this.getProducts();
-
-        const codeExistente = products.find(p => p.code === code);
-        if (codeExistente) {
-            console.log('El código ya existe.');
-            return;
-        }
-
-        const newProduct = {
-            id: products.length > 0 ? products[products.length - 1].id + 1 : 1,
-            title,
-            description,
-            price,
-            code,
-            stock,
-            status: true,
-            category,
-            thumbnails
+        const options = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            sort: sort ? { price: sort === 'asc' ? 1 : -1} : undefined
         };
-
-        products.push(newProduct);
-
-        await fs.writeFile(this.path, JSON.stringify(products, null, 2));
-
-        console.log('Producto agregado con éxito.');
+        const result = await ProductModel.paginate(filter, options);
+        return {
+            status: 'success',
+            payload: result.docs,
+            totalPages: result.totalpages,
+            prevPage: result.prevPage,
+            nextPage: result.nextPage,
+            page: result.page,
+            hasPrevPage: result.hasPrevPage,
+            hasNextPage: result.hastNextPage,
+            prevLink: result.hasPrevPage ? `?page=${result.prevPage}`: null,
+            nextLink: result.hasNextPage ? `?page=${result.NextPage}`: null
+        };
     }
-
     async getProductById(id) {
-        const products = await this.getProducts();
-        const product = products.find(p => p.id === parseInt(id));
-        if (!product) {
-            console.log('Producto no encontrado.');
-            return null;
-        }
-        return product;
+        return await ProductModel.findById(id);
     }
-
-    async updateProduct(id, campos) {
-        const products = await this.getProducts();
-        const index = products.findIndex(p => p.id === parseInt(id));
-
-        if (index === -1) {
-            console.log('Producto no encontrado.');
-            return;
-        }
-
-        campos.id = products[index].id;
-
-        products[index] = { ...products[index], ...campos };
-
-        await fs.writeFile(this.path, JSON.stringify(products, null, 2));
-        console.log('Producto actualizado.');
+    async addProduct(data){
+        const exist = await ProductManager.findOne({code: data.code});
+        if (exist) throw new Error ('Codigo de productos ya existente');
+        return await ProductModel.create(data);
     }
-
-    async deleteProduct(id) {
-        const products = await this.getProducts();
-        const nuevosProductos = products.filter(p => p.id !== parseInt(id));
-
-        if (products.length === nuevosProductos.length) {
-            console.log('No se encontró el producto a eliminar.');
-            return;
-        }
-
-        await fs.writeFile(this.path, JSON.stringify(nuevosProductos, null, 2));
-        console.log('Producto eliminado.');
+    async updateProduct(id, updates) {
+        return await ProductModel.findByIdAndUpdate(id, updates, { new: true});
+    }
+    async deleteProduct(id){
+        return await ProductModel.findByIdAndDelete(id);
     }
 }
 

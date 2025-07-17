@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
 import http from 'http';
+import connectBD from './config/db.js';
 
 import viewsRouter from './routes/views.routes.js';
 import productsRouter from './routes/products.routes.js';
@@ -12,6 +13,7 @@ import ProductManager from './managers/ProductManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname (__filename);
+await connectBD(); 
 
 const app = express();
 const PORT = 8080;

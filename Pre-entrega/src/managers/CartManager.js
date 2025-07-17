@@ -1,63 +1,43 @@
-import fs from "fs";
-import path from "path";
+import CartModel from '../models/cart.model.js';
 
 class CartManager {
-    constructor(pathFile) {
-        this.path = pathFile;
-    }
-
-    async getCarts() {
-        if (fs.existsSync(this.path)) {
-            const info = await fs.promises.readFile(this.path, "utf-8");
-            return JSON.parse(info);
-        } else {
-            return [];
-        }
-    }
-
-    async saveCarts(carts) {
-        await fs.promises.writeFile(this.path, JSON.stringify(carts, null, 2));
-    }
-
-    async addCart() {
-        const carts = await this.getCarts();
-
-        const newCart = {
-            id: carts.length > 0 ? carts[carts.length - 1].id + 1 : 1,
-            products: []
-        };
-
-        carts.push(newCart);
-        await this.saveCarts(carts);
+    async createCart(){ 
+        const newCart = await CartModel.create({ products: []});
         return newCart;
     }
+    async getCartById(id){
+        return await CartModel.findById(id).populate('products.product');
+    }
+    async addProductToCart(cartId, productId) {
+        const cart = await CartModel.findById(cartId);
+        if (!cart) return null;
 
-    async getCartById(cid) {
-        const carts = await this.getCarts();
-        const cart = carts.find(c => c.id === cid);
-        return cart || null;
+        const index = cart.products.findIndex(p => p.product.toString() === productId);
+
+        if (index !== -1) {
+            cart.products[index].quantity += 1;
+        } else {
+            cart.products.push({ product: productId });
+        }
+        await cart.save();
+        return await cart.populate('products.product');
     }
 
-    async addProductToCart(cartId, productId) {
-        const carts = await this.getCarts();
-        const cart = carts.find(c => c.id === cartId);
+    async removeProductFromCart(cartId, productId) {
+        const cart = await CartModel.findById(cartId);
+        if (!cart) return null;
 
-        if (!cart) {
-            return null;
-        }
+        cart.products = cart.products.filter (p => p.product.toString() !== productId)
+        await cart.save();
+        return cart;
+    }
 
-        const existingProduct = cart.products.find(p => p.product === productId);
+    async clearCart(cartId) {
+        const cart = await CartModel.findById(cartId);
+        if (!cart) return null;
 
-        if (existingProduct) {
-            existingProduct.quantity += 1;
-        } else {
-            cart.products.push({
-                product: productId,
-                quantity: 1
-            });
-        }
-
-        await this.saveCarts(carts);
+        cart.products = [];
+        await cart.save();
         return cart;
     }
 }
