@@ -1,43 +1,75 @@
 import express from 'express';
-import ProductManager from '../managers/ProductManager.js';
+import Product from '../models/product.model.js';
 
 const router = express.Router();
 
-const productManager = new ProductManager();
-
+// products con paginación, orden, filtro
 router.get('/', async (req, res) => {
-    const products = await productManager.getProducts();
-    res.json(products);
-});
+    try {
+        const { limit = 10, page = 1, sort, query } = req.query;
 
-router.get('/:pid', async (req, res) => {
-    const { pid } = req.params;
-    const product = await productManager.getProductById(pid);
+        const filter = {};
+        if (query) {
+            if (query === "true" || query === "false") {
+                filter.status = query === "true";
+            } else {
+                filter.category = query;
+            }
+        }
 
-    if (!product) {
-        return res.status(404).json({ error: 'Producto no encontrado' });
+        const options = {
+            limit: parseInt(limit),
+            page: parseInt(page),
+            lean: true
+        };
+
+        if (sort === "asc") {
+            options.sort = { price: 1 };
+        } else if (sort === "desc") {
+            options.sort = { price: -1 };
+        }
+
+        const result = await Product.paginate(filter, options);
+
+        res.json({
+            status: "success",
+            payload: result.docs,
+            totalPages: result.totalPages,
+            prevPage: result.prevPage,
+            nextPage: result.nextPage,
+            page: result.page,
+            hasPrevPage: result.hasPrevPage,
+            hasNextPage: result.hasNextPage,
+            prevLink: result.hasPrevPage
+                ? `/api/products?limit=${limit}&page=${result.prevPage}&sort=${sort || ""}&query=${query || ""}`
+                : null,
+            nextLink: result.hasNextPage
+                ? `/api/products?limit=${limit}&page=${result.nextPage}&sort=${sort || ""}&query=${query || ""}`
+                : null
+        });
+
+    } catch (error) {
+        console.error("Error al obtener productos:", error);
+        res.status(500).json({ status: "error", message: "Error interno del servidor" });
     }
-
-    res.json(product);
 });
 
-router.post('/', async (req, res) => {
-    const nuevoProducto = req.body;
-    await productManager.addProduct(nuevoProducto);
-    res.status(201).json({ mensaje: 'Producto creado' });
-});
+//agarrar un producto
+router.get('/:pid', async (req, res) => {
+    try {
+        const { pid } = req.params;
 
-router.put('/:pid', async (req, res) => {
-    const { pid } = req.params;
-    const cambios = req.body;
-    await productManager.updateProduct(pid, cambios);
-    res.json({ mensaje: 'Producto actualizado' });
-});
+        const product = await Product.findById(pid).lean();
 
-router.delete('/:pid', async (req, res) => {
-    const { pid } = req.params;
-    await productManager.deleteProduct(pid);
-    res.json({ mensaje: 'Producto eliminado' });
+        if (!product) {
+            return res.status(404).json({ status: "error", message: "Producto no encontrado" });
+        }
+
+        res.json({ status: "success", product });
+    } catch (error) {
+        console.error("Error al obtener el producto:", error);
+        res.status(500).json({ status: "error", message: "Error interno del servidor" });
+    }
 });
 
 export default router;

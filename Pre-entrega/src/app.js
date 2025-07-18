@@ -9,57 +9,54 @@ import connectBD from './config/db.js';
 import viewsRouter from './routes/views.routes.js';
 import productsRouter from './routes/products.routes.js';
 import cartsRouter from './routes/carts.routes.js';
-import ProductManager from './managers/ProductManager.js';
+import ProductModel from './models/product.model.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname (__filename);
-await connectBD(); 
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 8080;
-const httpServer = http.createServer(app);
-const io = new Server(httpServer);
 
 app.use(express.json());
-console.log("🧭 __dirname:", __dirname);
-console.log("📂 Static path:", path.join(__dirname, 'public'));
+app.use(express.urlencoded({ extended: true }));
+
 app.use(express.static(path.join(__dirname, 'public')))
-app.use((req, res, next) => {
-    if (req.url.includes('/js/realTime.js')) {
-        console.error(`⚠️ Archivo JS no encontrado en: ${req.url}`);
-    }
-    next();
-});
-app.use('/', viewsRouter);
 
 app.engine('handlebars', engine())
 app.set('view engine', 'handlebars')
 app.set('views', path.join(__dirname, 'views'))
 
+app.use('/', viewsRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/carts', cartsRouter);
 
+const start = async () => {
+    await connectBD();
 
-const productManager = new ProductManager();
+    const httpServer = http.createServer(app);
+    const io = new Server(httpServer);
 
-io.on('connection', async (socket) => {
-    console.log('Nuevo cliente conectado');
+    io.on('connection', async (socket) => {
+        console.log('Nuevo cliente conectado por WebSocket');
 
-    const productos = await productManager.getProducts();
-    socket.emit('productosActualizados', productos);
+        const productos = await ProductModel.find().lean();
+        socket.emit('productosActualizados', productos);
 
-    socket.on ('agregarProducto', async (nuevoProducto) => {
-        await productManager.addProduct(nuevoProducto);
-        const productosActualizados = await productManager.getProducts();
-        io.emit ('productosActualizados', productosActualizados);
+        socket.on('agregarProducto', async (nuevoProducto) => {
+            await ProductModel.create(nuevoProducto);
+            const productosActualizados = await ProductModel.find().lean();
+            io.emit('productosActualizados', productosActualizados);
+        });
+
+        socket.on('eliminarProducto', async (id) => {
+            await ProductModel.findByIdAndDelete(id);
+            const productosActualizados = await ProductModel.find().lean();
+            io.emit('productosActualizados', productosActualizados);
+        });
     });
 
-    socket.on ('eliminarProducto', async (id) => {
-        await productManager.deleteProduct(id);
-        const productosActualizados = await productManager.getProducts();
-        io.emit('productosActualizados', productosActualizados);
-    })
-})
-httpServer.listen(PORT, () =>{
-    console.log(`Servidor corriendo en ${PORT}`);
-});
+    httpServer.listen(PORT, () => {
+        console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    });
+};
+start();
