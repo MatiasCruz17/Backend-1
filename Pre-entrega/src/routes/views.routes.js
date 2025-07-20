@@ -46,26 +46,11 @@ router.get("/products", async (req, res) => {
 
 router.get("/products/:pid", async (req, res) => {
     try {
+        const { pid } = req.params;
         const product = await Product.findById(req.params.pid).lean();
         if (!product) {
             return res.status(404).send("Producto no encontrado");
         }
-        res.render("productDetail", { product });
-    } catch (error) {
-        console.error("Error al cargar el producto:", error);
-        res.status(500).send("Error interno del servidor");
-    }
-});
-
-router.get("/products/:pid", async (req, res) => {
-    try {
-        const { pid } = req.params;
-        const product = await Product.findById(pid).lean();
-
-        if (!product) {
-            return res.status(404).send("Producto no encontrado");
-        }
-
         res.render("productDetail", { product });
     } catch (error) {
         console.error("Error al cargar el producto:", error);
