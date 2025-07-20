@@ -71,5 +71,26 @@ router.get('/:pid', async (req, res) => {
         res.status(500).json({ status: "error", message: "Error interno del servidor" });
     }
 });
+// aca creo un producto
+router.post('/', async (req, res) => {
+    try {
+        const { title, description, price, code, stock, category, thumbnails } = req.body;
+
+        const newProduct = await Product.create({
+            title,
+            description,
+            price,
+            code,
+            stock,
+            category,
+            thumbnails
+        });
+
+        res.status(201).json(newProduct);
+    } catch (error) {
+        console.error("Error al crear el producto:", error);
+        res.status(500).json({ status: "error", message: "No se pudo crear el producto" });
+    }
+});
 
 export default router;

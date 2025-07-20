@@ -11,7 +11,7 @@ router.post('/', async (req, res) => {
 });
 
 //obtengo el carrito con ID "populateados"
-router.get('/:cid', async (req, res) => {
+router.get('/687c160e1e46ea083d08d1f3', async (req, res) => {
     const cart = await cartManager.getCartById(req.params.cid);
     if (!cart) return res.status(404).json({ error: 'Carrito no encontrado' });
     res.json(cart);
